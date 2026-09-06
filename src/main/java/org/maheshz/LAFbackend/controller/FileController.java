@@ -14,6 +14,7 @@ import java.net.MalformedURLException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.List;
 import java.util.Map;
 
 @RestController
@@ -23,11 +24,39 @@ import java.util.Map;
 public class FileController {
 
     private final FileService fileService;
+    private static final long MAX_FILE_SIZE = 6 * 1024 * 1024; // 6MB in bytes
+
+    // Allowed web-safe MIME types
+    private static final List<String> ALLOWED_MIME_TYPES = List.of(
+            "image/jpeg",
+            "image/png",
+            "image/webp",
+            "application/pdf"
+    );
 
     @PostMapping("/upload")
-    public ResponseEntity<Map<String, String>> uploadFile(@RequestParam("file") MultipartFile file) {
+    public ResponseEntity<?> uploadFile(@RequestParam("file") MultipartFile file) {
+        if (file.isEmpty()) {
+            return ResponseEntity.badRequest().body(Map.of("message", "Uploaded file cannot be empty."));
+        }
+
+        // 1. Strict Size Verification (6MB)
+        if (file.getSize() > MAX_FILE_SIZE) {
+            return ResponseEntity.badRequest().body(Map.of("message", "File exceeds the 6MB maximum limit."));
+        }
+
+        // 2. Strict Format Verification
+        String contentType = file.getContentType();
+        if (contentType == null || !ALLOWED_MIME_TYPES.contains(contentType.toLowerCase())) {
+            return ResponseEntity.badRequest().body(Map.of("message", "Invalid file type. Supported formats: JPG, PNG, WEBP, and PDF."));
+        }
+
         String fileUrl = fileService.storeFile(file);
-        return ResponseEntity.ok(Map.of("url", fileUrl));
+        return ResponseEntity.ok(Map.of(
+                "url", fileUrl,
+                "contentType", contentType,
+                "size", String.valueOf(file.getSize())
+        ));
     }
 
     @GetMapping("/{fileName:.+}")
@@ -36,7 +65,6 @@ public class FileController {
             Path fileStorageLocation = Paths.get("uploads").toAbsolutePath().normalize();
             Path filePath = fileStorageLocation.resolve(fileName).normalize();
 
-            // SECURITY FIX: Path Traversal Guard on download
             if (!filePath.getParent().equals(fileStorageLocation)) {
                 return ResponseEntity.badRequest().build();
             }
@@ -44,10 +72,10 @@ public class FileController {
             Resource resource = new UrlResource(filePath.toUri());
 
             if (resource.exists()) {
-                // SECURITY FIX: Dynamically probe content type to prevent XSS via disguised HTML files
                 String contentType;
                 try {
                     contentType = Files.probeContentType(filePath);
+                    if (contentType == null) contentType = "application/octet-stream";
                 } catch (Exception e) {
                     contentType = "application/octet-stream";
                 }

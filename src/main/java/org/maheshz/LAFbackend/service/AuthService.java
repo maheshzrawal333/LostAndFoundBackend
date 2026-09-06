@@ -1,6 +1,7 @@
 package org.maheshz.LAFbackend.service;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.maheshz.LAFbackend.dto.AuthResponseDTO;
 import org.maheshz.LAFbackend.entity.User;
 import org.maheshz.LAFbackend.enums.Role;
@@ -13,6 +14,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class AuthService {
@@ -21,34 +23,47 @@ public class AuthService {
     private final JwtUtils jwtUtils;
     private final CustomUserDetailsService userDetailsService;
     private final PasswordEncoder passwordEncoder;
+    private final OtpService otpService;
 
-    private final String MOCK_OTP = "123456";
-
-    // --- NEW: Helper method to check database for existing emails ---
     public boolean doesEmailExist(String email) {
         return userRepository.findByEmail(email).isPresent();
+    }
+
+    public boolean doesPhoneExist(String phone) {
+        return userRepository.findByPhone(phone).isPresent();
     }
 
     @Transactional
     public AuthResponseDTO standardLogin(String email, String password) {
         User user = userRepository.findByEmail(email)
-                .orElseThrow(() -> new BadCredentialsException("Account not found."));
+                .orElseThrow(() -> {
+                    log.warn("[AUTH AUDIT] Failed login attempt for unknown email: {}", email);
+                    return new BadCredentialsException("Account not found.");
+                });
 
         if (!passwordEncoder.matches(password, user.getPassword())) {
+            log.warn("[AUTH AUDIT] Failed login attempt (wrong password) for user: {}", user.getId());
             throw new BadCredentialsException("Invalid email or password.");
         }
 
+        log.info("[AUTH AUDIT] Successful login for user: {}", user.getId());
         return generateAuthResponse(user);
     }
 
     @Transactional
     public AuthResponseDTO registerNewUser(String email, String phone, String password, String otp) {
-        if (!MOCK_OTP.equals(otp)) {
+        if (!otpService.verifyOtp(email, otp)) {
+            log.warn("[AUTH AUDIT] Failed registration attempt (invalid OTP) for email: {}", email);
             throw new BadCredentialsException("Invalid verification code.");
         }
 
-        if (userRepository.findByEmail(email).isPresent()) {
-            throw new BadCredentialsException("An account with this email already exists.");
+        if (password.contains(" ")) {
+            throw new BadCredentialsException("Password cannot contain spaces.");
+        }
+
+        if (userRepository.findByEmail(email).isPresent() || userRepository.findByPhone(phone).isPresent()) {
+            log.warn("[AUTH AUDIT] Failed registration attempt (duplicate details) for email: {}", email);
+            throw new BadCredentialsException("An account with these details already exists.");
         }
 
         User newUser = User.builder()
@@ -60,13 +75,19 @@ public class AuthService {
                 .build();
 
         User savedUser = userRepository.save(newUser);
+        log.info("[AUTH AUDIT] New user registered. User ID: {}", savedUser.getId());
         return generateAuthResponse(savedUser);
     }
 
     @Transactional
     public void resetPassword(String email, String otp, String newPassword) {
-        if (!MOCK_OTP.equals(otp)) {
+        if (!otpService.verifyOtp(email, otp)) {
+            log.warn("[AUTH AUDIT] Password reset failed (invalid OTP) for email: {}", email);
             throw new BadCredentialsException("Invalid verification code.");
+        }
+
+        if (newPassword.contains(" ")) {
+            throw new BadCredentialsException("Password cannot contain spaces.");
         }
 
         User user = userRepository.findByEmail(email)
@@ -74,6 +95,7 @@ public class AuthService {
 
         user.setPassword(passwordEncoder.encode(newPassword));
         userRepository.save(user);
+        log.info("[AUTH AUDIT] Password reset successful for user: {}", user.getId());
     }
 
     private AuthResponseDTO generateAuthResponse(User user) {
@@ -91,9 +113,6 @@ public class AuthService {
                 .role(user.getRole())
                 .build();
 
-        return AuthResponseDTO.builder()
-                .token(jwtToken)
-                .user(userDto)
-                .build();
+        return AuthResponseDTO.builder().token(jwtToken).user(userDto).build();
     }
 }

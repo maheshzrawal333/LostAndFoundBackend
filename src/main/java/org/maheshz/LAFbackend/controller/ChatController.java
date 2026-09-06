@@ -1,6 +1,7 @@
 package org.maheshz.LAFbackend.controller;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.maheshz.LAFbackend.dto.ChatResponseDTO;
 import org.maheshz.LAFbackend.dto.MessageRequestDTO;
 import org.maheshz.LAFbackend.entity.Chat;
@@ -12,13 +13,17 @@ import org.maheshz.LAFbackend.repository.ChatRepository;
 import org.maheshz.LAFbackend.repository.MessageRepository;
 import org.maheshz.LAFbackend.repository.UserRepository;
 import org.springframework.http.ResponseEntity;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.web.bind.annotation.*;
 
 import java.security.Principal;
 import java.util.List;
+import java.util.Map;
+import java.util.Random;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
+@Slf4j
 @RestController
 @RequestMapping("/api/v1/chats")
 @RequiredArgsConstructor
@@ -28,56 +33,29 @@ public class ChatController {
     private final ChatRepository chatRepository;
     private final MessageRepository messageRepository;
     private final UserRepository userRepository;
+    private final SimpMessagingTemplate messagingTemplate;
 
     @GetMapping
     public ResponseEntity<List<ChatResponseDTO>> getMyChats(Principal principal) {
-        User currentUser = userRepository.findByEmail(principal.getName())
-                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
-
+        User currentUser = userRepository.findByEmail(principal.getName()).orElseThrow(() -> new ResourceNotFoundException("User not found"));
         List<Chat> chats = chatRepository.findByFinderOrClaimerOrderByUpdatedAtDesc(currentUser, currentUser);
 
         List<ChatResponseDTO> response = chats.stream().map(chat -> {
             boolean isFinder = chat.getFinder().getId().equals(currentUser.getId());
             User otherUser = isFinder ? chat.getClaimer() : chat.getFinder();
-
-            String lastMsgText = chat.getMessages().isEmpty() ? "No messages yet" :
-                    chat.getMessages().get(chat.getMessages().size() - 1).getText();
+            String lastMsgText = chat.getMessages().isEmpty() ? "No messages yet" : chat.getMessages().get(chat.getMessages().size() - 1).getText();
 
             List<ChatResponseDTO.MessageDTO> messageDTOs = chat.getMessages().stream().map(msg -> {
-                String senderType = msg.isSystemMessage() ? "system" :
-                        msg.getSender().getId().equals(currentUser.getId()) ? "me" : "them";
-
-                ChatResponseDTO.AttachmentDTO attachment = null;
-                if (msg.getAttachmentUrl() != null) {
-                    attachment = ChatResponseDTO.AttachmentDTO.builder()
-                            .url(msg.getAttachmentUrl())
-                            .type(msg.getAttachmentType())
-                            .name(msg.getAttachmentName())
-                            .build();
-                }
-
-                return ChatResponseDTO.MessageDTO.builder()
-                        .id(msg.getId().toString())
-                        .sender(senderType)
-                        .text(msg.getText())
-                        .time(msg.getSentAt())
-                        .attachment(attachment)
-                        .build();
+                String senderType = msg.isSystemMessage() ? "system" : msg.getSender().getId().equals(currentUser.getId()) ? "me" : "them";
+                ChatResponseDTO.AttachmentDTO attachment = msg.getAttachmentUrl() != null ? ChatResponseDTO.AttachmentDTO.builder().url(msg.getAttachmentUrl()).type(msg.getAttachmentType()).name(msg.getAttachmentName()).build() : null;
+                return ChatResponseDTO.MessageDTO.builder().id(msg.getId().toString()).sender(senderType).text(msg.getText()).time(msg.getSentAt()).attachment(attachment).build();
             }).collect(Collectors.toList());
 
-            return ChatResponseDTO.builder()
-                    .id(chat.getId())
-                    .itemTitle(chat.getItem().getTitle())
-                    .reference("REF: TRK-" + chat.getItem().getId().toString().substring(0, 4).toUpperCase())
-                    .otherUser(otherUser.getName())
-                    .otherUserAvatar(otherUser.getAvatarUrl())
-                    .role(isFinder ? "Finder" : "Claimer")
-                    .status(chat.getStatus())
-                    .lastMessage(lastMsgText)
-                    .time(chat.getUpdatedAt())
-                    .unread(0) // Logic for unread counts can be added later
-                    .messages(messageDTOs)
-                    .build();
+            boolean isPoster = chat.getItem().getReportedBy().getId().equals(currentUser.getId());
+            boolean closureRequestedByMe = chat.getClosureRequestedBy() != null && chat.getClosureRequestedBy().getId().equals(currentUser.getId());
+            boolean closureRequestedByOther = chat.getClosureRequestedBy() != null && !chat.getClosureRequestedBy().getId().equals(currentUser.getId());
+
+            return ChatResponseDTO.builder().id(chat.getId()).itemTitle(chat.getItem().getTitle()).reference("REF: TRK-" + chat.getItem().getId().toString().substring(0, 6).toUpperCase()).otherUser(otherUser.getName()).otherUserAvatar(otherUser.getAvatarUrl()).role(isFinder ? "Finder" : "Claimer").status(chat.getStatus()).lastMessage(lastMsgText).time(chat.getUpdatedAt()).unread(0).isPoster(isPoster).closureRequestedByMe(closureRequestedByMe).closureRequestedByOther(closureRequestedByOther).resolutionOtp(isPoster ? chat.getResolutionOtp() : null).messages(messageDTOs).build();
         }).collect(Collectors.toList());
 
         return ResponseEntity.ok(response);
@@ -85,50 +63,143 @@ public class ChatController {
 
     @PostMapping("/{chatId}/messages")
     public ResponseEntity<?> sendMessage(@PathVariable UUID chatId, @RequestBody MessageRequestDTO dto, Principal principal) {
-        User sender = userRepository.findByEmail(principal.getName())
-                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
-
-        Chat chat = chatRepository.findById(chatId)
-                .orElseThrow(() -> new ResourceNotFoundException("Chat not found"));
+        User sender = userRepository.findByEmail(principal.getName()).orElseThrow();
+        Chat chat = chatRepository.findById(chatId).orElseThrow();
 
         if (chat.getStatus() == ItemStatus.RESOLVED) {
-            return ResponseEntity.badRequest().body("Cannot send messages to a resolved chat");
+            return ResponseEntity.badRequest().body(Map.of("message", "Cannot send messages to a resolved chat"));
         }
 
-        Message message = Message.builder()
-                .chat(chat)
-                .sender(sender)
-                .text(dto.getText())
-                .attachmentUrl(dto.getAttachmentUrl())
-                .attachmentType(dto.getAttachmentType())
-                .attachmentName(dto.getAttachmentName())
-                .isSystemMessage(false)
-                .build();
+        Message message = Message.builder().chat(chat).sender(sender).text(dto.getText())
+                .attachmentUrl(dto.getAttachmentUrl()).attachmentType(dto.getAttachmentType())
+                .attachmentName(dto.getAttachmentName()).isSystemMessage(false).build();
 
         messageRepository.save(message);
         chat.setUpdatedAt(message.getSentAt());
         chatRepository.save(chat);
 
+        broadcastToChat(chatId, "NEW_MESSAGE", Map.of(
+                "id", message.getId().toString(),
+                "senderId", sender.getId().toString(),
+                "text", message.getText(),
+                "time", message.getSentAt(),
+                "hasAttachment", dto.getAttachmentUrl() != null
+        ));
+
+        return ResponseEntity.ok().build();
+    }
+
+    @PostMapping("/{chatId}/request-resolve-otp")
+    public ResponseEntity<?> requestResolveOtp(@PathVariable UUID chatId, Principal principal) {
+        User currentUser = userRepository.findByEmail(principal.getName()).orElseThrow();
+        Chat chat = chatRepository.findById(chatId).orElseThrow();
+
+        if (!chat.getItem().getReportedBy().getId().equals(currentUser.getId())) {
+            return ResponseEntity.badRequest().body(Map.of("message", "Only the original poster can generate the resolution code."));
+        }
+
+        String otp = String.format("%06d", new Random().nextInt(999999));
+        chat.setResolutionOtp(otp);
+        chatRepository.save(chat);
+
+        broadcastToChat(chatId, "STATE_UPDATE", Map.of("action", "OTP_GENERATED"));
+        return ResponseEntity.ok(Map.of("message", "Code generated securely."));
+    }
+
+    // NEW FIX: Allow the poster to cancel the OTP handshake and return to chatting
+    @PatchMapping("/{chatId}/cancel-resolve-otp")
+    public ResponseEntity<?> cancelResolveOtp(@PathVariable UUID chatId, Principal principal) {
+        User currentUser = userRepository.findByEmail(principal.getName()).orElseThrow();
+        Chat chat = chatRepository.findById(chatId).orElseThrow();
+
+        if (!chat.getItem().getReportedBy().getId().equals(currentUser.getId())) {
+            return ResponseEntity.badRequest().body(Map.of("message", "Only the poster can cancel the code."));
+        }
+
+        chat.setResolutionOtp(null);
+        Message systemMessage = Message.builder().chat(chat).isSystemMessage(true)
+                .text("Resolution handshake cancelled. You can continue chatting.").build();
+        messageRepository.save(systemMessage);
+        chatRepository.save(chat);
+
+        broadcastToChat(chatId, "STATE_UPDATE", Map.of("action", "OTP_CANCELLED"));
         return ResponseEntity.ok().build();
     }
 
     @PatchMapping("/{chatId}/resolve")
-    public ResponseEntity<?> resolveChat(@PathVariable UUID chatId, Principal principal) {
-        Chat chat = chatRepository.findById(chatId)
-                .orElseThrow(() -> new ResourceNotFoundException("Chat not found"));
+    public ResponseEntity<?> resolveChat(@PathVariable UUID chatId, @RequestBody Map<String, String> payload, Principal principal) {
+        User currentUser = userRepository.findByEmail(principal.getName()).orElseThrow();
+        String otp = payload.get("otp");
+        Chat chat = chatRepository.findById(chatId).orElseThrow();
+
+        if (chat.getResolutionOtp() == null || !chat.getResolutionOtp().equals(otp)) {
+            return ResponseEntity.badRequest().body(Map.of("message", "Invalid verification code."));
+        }
 
         chat.setStatus(ItemStatus.RESOLVED);
         chat.getItem().setStatus(ItemStatus.RESOLVED);
 
-        Message systemMessage = Message.builder()
-                .chat(chat)
-                .isSystemMessage(true)
-                .text("Item exchange confirmed. Chat resolved and closed to limit platform costs and secure data.")
-                .build();
-
+        Message systemMessage = Message.builder().chat(chat).isSystemMessage(true)
+                .text("Handshake successful! OTP verified. Item exchange confirmed and closed.").build();
         messageRepository.save(systemMessage);
         chatRepository.save(chat);
 
+        broadcastToChat(chatId, "STATE_UPDATE", Map.of("action", "CHAT_RESOLVED"));
         return ResponseEntity.ok().build();
+    }
+
+    @PatchMapping("/{chatId}/request-close")
+    public ResponseEntity<?> requestCloseChat(@PathVariable UUID chatId, Principal principal) {
+        User currentUser = userRepository.findByEmail(principal.getName()).orElseThrow();
+        Chat chat = chatRepository.findById(chatId).orElseThrow();
+
+        chat.setClosureRequestedBy(currentUser);
+        Message systemMessage = Message.builder().chat(chat).isSystemMessage(true)
+                .text("User requested to close this connection as 'Not a Match'. Waiting for confirmation.").build();
+        messageRepository.save(systemMessage);
+        chatRepository.save(chat);
+
+        broadcastToChat(chatId, "STATE_UPDATE", Map.of("action", "CLOSURE_REQUESTED", "requesterId", currentUser.getId()));
+        return ResponseEntity.ok().build();
+    }
+
+    // NEW FIX: Handles "Cancel Request" and "Decline" buttons
+    @PatchMapping("/{chatId}/cancel-close")
+    public ResponseEntity<?> cancelCloseChat(@PathVariable UUID chatId, Principal principal) {
+        Chat chat = chatRepository.findById(chatId).orElseThrow();
+
+        chat.setClosureRequestedBy(null);
+        Message systemMessage = Message.builder().chat(chat).isSystemMessage(true)
+                .text("Closure request cancelled. You can continue chatting.").build();
+        messageRepository.save(systemMessage);
+        chatRepository.save(chat);
+
+        broadcastToChat(chatId, "STATE_UPDATE", Map.of("action", "CLOSURE_CANCELLED"));
+        return ResponseEntity.ok().build();
+    }
+
+    @PatchMapping("/{chatId}/approve-close")
+    public ResponseEntity<?> approveCloseChat(@PathVariable UUID chatId, Principal principal) {
+        User currentUser = userRepository.findByEmail(principal.getName()).orElseThrow();
+        Chat chat = chatRepository.findById(chatId).orElseThrow();
+
+        chat.setStatus(ItemStatus.RESOLVED);
+        chat.setClosureRequestedBy(null);
+
+        Message systemMessage = Message.builder().chat(chat).isSystemMessage(true)
+                .text("Mutual agreement reached. Connection closed as 'Not a Match'.").build();
+        messageRepository.save(systemMessage);
+        chatRepository.save(chat);
+
+        broadcastToChat(chatId, "STATE_UPDATE", Map.of("action", "CHAT_RESOLVED"));
+        return ResponseEntity.ok().build();
+    }
+
+    private void broadcastToChat(UUID chatId, String type, Map<String, Object> payload) {
+        Object wsMessage = Map.of(
+                "type", type,
+                "data", payload
+        );
+        messagingTemplate.convertAndSend("/topic/chat/" + chatId, wsMessage);
     }
 }

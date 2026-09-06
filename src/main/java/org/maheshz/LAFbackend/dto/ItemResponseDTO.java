@@ -27,4 +27,5 @@ public class ItemResponseDTO {
     private OffsetDateTime dateLostOrFound;
     private OffsetDateTime createdAt;
     private String secretVerificationQuestion;
+    private boolean hasAlreadyClaimed;
 }

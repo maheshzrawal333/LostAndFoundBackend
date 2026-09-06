@@ -41,22 +41,27 @@ public class ClaimController {
         Item item = itemRepository.findById(dto.getItemId())
                 .orElseThrow(() -> new ResourceNotFoundException("Item not found"));
 
-        // SECURITY FIX (OWASP A01: Broken Access Control): Prevent users from claiming their own items via API
         if (item.getReportedBy().getId().equals(claimer.getId())) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN)
                     .body("{\"error\": \"Security Exception: You cannot claim an item you reported.\"}");
         }
 
-        // 1. Save the Official Claim Record
+        // --- NEW: Prevent duplicate claims ---
+        if (claimRepository.existsByItemIdAndClaimerId(item.getId(), claimer.getId())) {
+            return ResponseEntity.status(HttpStatus.CONFLICT)
+                    .body("{\"error\": \"You have already established a secure connection for this item.\"}");
+        }
+
         Claim claim = Claim.builder()
                 .item(item)
                 .claimer(claimer)
                 .proofDescription("Secure connection initiated via OTP verification.")
                 .contactEmailOrPhone(dto.getContactEmailOrPhone())
+                .claimerLatitude(dto.getLatitude())
+                .claimerLongitude(dto.getLongitude())
                 .build();
         claimRepository.save(claim);
 
-        // 2. Automatically Create the Secure Chat Session
         Chat chat = Chat.builder()
                 .item(item)
                 .status(ItemStatus.OPEN)
@@ -65,7 +70,6 @@ public class ClaimController {
                 .build();
         chat = chatRepository.save(chat);
 
-        // 3. Insert an automated system message
         Message initialMessage = Message.builder()
                 .chat(chat)
                 .sender(claimer)

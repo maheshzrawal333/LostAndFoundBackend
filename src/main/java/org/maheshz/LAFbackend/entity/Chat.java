@@ -38,6 +38,14 @@ public class Chat {
     @OneToMany(mappedBy = "chat", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<Message> messages;
 
+    // --- NEW: PROFESSIONAL HANDSHAKE FIELDS ---
+    @Column(name = "resolution_otp", length = 6)
+    private String resolutionOtp;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "closure_requested_by_id")
+    private User closureRequestedBy;
+
     @CreationTimestamp
     private LocalDateTime createdAt;
 

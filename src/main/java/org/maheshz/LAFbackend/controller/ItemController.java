@@ -1,9 +1,12 @@
 package org.maheshz.LAFbackend.controller;
 
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.maheshz.LAFbackend.dto.CreateItemDTO;
 import org.maheshz.LAFbackend.dto.ItemResponseDTO;
+import org.maheshz.LAFbackend.dto.PaginatedResponseDTO;
+import org.maheshz.LAFbackend.enums.ItemStatus;
 import org.maheshz.LAFbackend.enums.ItemType;
 import org.maheshz.LAFbackend.service.ItemService;
 import org.springframework.http.HttpStatus;
@@ -11,7 +14,6 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.security.Principal;
-import java.util.List;
 import java.util.UUID;
 
 @RestController
@@ -23,26 +25,31 @@ public class ItemController {
     private final ItemService itemService;
 
     @GetMapping
-    public ResponseEntity<List<ItemResponseDTO>> getAllItems(
+    public ResponseEntity<PaginatedResponseDTO<ItemResponseDTO>> getAllItems(
             @RequestParam(required = false) ItemType type,
+            @RequestParam(required = false) ItemStatus status,
+            @RequestParam(required = false) Boolean myPosts,
             @RequestParam(required = false) String search,
-            @RequestParam(required = false) String location) {
+            @RequestParam(required = false) String location,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "8") int size,
+            Principal principal) {
 
-        // Calls the service to apply the filters and return the safe DTO list
-        List<ItemResponseDTO> items = itemService.getAllItems(type, search, location);
-        return ResponseEntity.ok(items);
+        String email = principal != null ? principal.getName() : null;
+        PaginatedResponseDTO<ItemResponseDTO> paginatedItems = itemService.getAllItems(type, status, myPosts, search, location, email, page, size);
+        return ResponseEntity.ok(paginatedItems);
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<ItemResponseDTO> getItemById(@PathVariable UUID id) {
-        return ResponseEntity.ok(itemService.getItemById(id));
+    public ResponseEntity<ItemResponseDTO> getItemById(@PathVariable UUID id, Principal principal) {
+        String email = principal != null ? principal.getName() : null;
+        return ResponseEntity.ok(itemService.getItemById(id, email));
     }
 
     @PostMapping
-    public ResponseEntity<ItemResponseDTO> createItem(@Valid @RequestBody CreateItemDTO dto, Principal principal) {
-        // Principal contains the email extracted from the JWT
+    public ResponseEntity<ItemResponseDTO> createItem(@Valid @RequestBody CreateItemDTO dto, Principal principal, HttpServletRequest request) {
         String userEmail = principal.getName();
-        ItemResponseDTO savedItem = itemService.createItem(dto, userEmail);
+        ItemResponseDTO savedItem = itemService.createItem(dto, userEmail, request);
         return new ResponseEntity<>(savedItem, HttpStatus.CREATED);
     }
 }

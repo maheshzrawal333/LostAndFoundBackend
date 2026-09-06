@@ -8,4 +8,7 @@ import java.util.UUID;
 
 @Repository
 public interface ClaimRepository extends JpaRepository<Claim, UUID> {
+
+    // NEW: Check if a user has already claimed this specific item
+    boolean existsByItemIdAndClaimerId(UUID itemId, UUID claimerId);
 }

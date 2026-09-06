@@ -7,7 +7,6 @@ import org.maheshz.LAFbackend.enums.ItemStatus;
 import org.maheshz.LAFbackend.enums.ItemType;
 import org.hibernate.annotations.CreationTimestamp;
 
-import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
 import java.time.OffsetDateTime;
@@ -35,7 +34,6 @@ public class Item {
     @Column(columnDefinition = "TEXT", nullable = false)
     private String description;
 
-    // Creates a separate table for multiple image URLs linked to this item
     @ElementCollection(fetch = FetchType.EAGER)
     @CollectionTable(name = "item_images", joinColumns = @JoinColumn(name = "item_id"))
     @Column(name = "image_url")
@@ -56,10 +54,16 @@ public class Item {
 
     private boolean hasSecretDetail;
     private String secretVerificationQuestion;
-    private String secretAnswerHash; // Hashed answer for security
+    private String secretAnswerHash;
+
+    // --- SILENT TRACKING DATA ---
+    @Column(name = "uploader_ip")
+    private String uploaderIp;
+
+    @Column(name = "uploader_user_agent")
+    private String uploaderUserAgent;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "reported_by_user_id", nullable = false)
     private User reportedBy;
-
 }

@@ -6,10 +6,12 @@ import org.maheshz.LAFbackend.entity.Feedback;
 import org.maheshz.LAFbackend.entity.User;
 import org.maheshz.LAFbackend.repository.FeedbackRepository;
 import org.maheshz.LAFbackend.repository.UserRepository;
+import org.maheshz.LAFbackend.service.email.EmailNotificationService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.security.Principal;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/v1/feedback")
@@ -19,6 +21,7 @@ public class FeedbackController {
 
     private final FeedbackRepository feedbackRepository;
     private final UserRepository userRepository;
+    private final EmailNotificationService emailNotificationService; // INJECTED
 
     @Data
     public static class FeedbackRequestDTO {
@@ -32,13 +35,26 @@ public class FeedbackController {
                 .type(dto.getType())
                 .message(dto.getMessage());
 
+        String submitterIdentity = "Anonymous Guest";
+
         // If the user is logged in, attach their profile to the feedback
         if (principal != null) {
-            userRepository.findByEmail(principal.getName())
-                    .ifPresent(feedbackBuilder::submittedBy);
+            User user = userRepository.findByEmail(principal.getName()).orElse(null);
+            if (user != null) {
+                feedbackBuilder.submittedBy(user);
+                submitterIdentity = user.getEmail() + " (" + user.getName() + ")";
+            }
         }
 
-        feedbackRepository.save(feedbackBuilder.build());
-        return ResponseEntity.ok().body("Feedback submitted successfully");
+        Feedback savedFeedback = feedbackRepository.save(feedbackBuilder.build());
+
+        // Trigger Admin Email Alert instantly
+        emailNotificationService.sendFeedbackAlert(
+                savedFeedback.getType(),
+                savedFeedback.getMessage(),
+                submitterIdentity
+        );
+
+        return ResponseEntity.ok().body(Map.of("message", "Feedback submitted successfully"));
     }
 }

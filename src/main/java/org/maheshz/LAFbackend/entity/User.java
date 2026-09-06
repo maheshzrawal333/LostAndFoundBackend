@@ -28,7 +28,7 @@ public class User {
     private String phone;
 
     @Column(nullable = false)
-    private String password; // Bcrypt hashed
+    private String password;
 
     private String province;
     private String district;
@@ -38,6 +38,10 @@ public class User {
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private Role role = Role.USER;
+
+    // --- NEW RATE LIMITING FIELDS ---
+    private Integer profileUpdateCount;
+    private LocalDateTime profileUpdateCycleStart;
 
     @CreationTimestamp
     private LocalDateTime createdAt;
