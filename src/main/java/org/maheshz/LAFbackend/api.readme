@@ -1,0 +1,152 @@
+1. Authentication & OTP
+
+    Request OTP
+
+        Method: POST
+
+        URL: http://localhost:8081/api/v1/auth/request-otp
+
+        Body (JSON): {"emailOrPhone": "john.doe@example.com"}
+
+    Verify OTP & Get JWT
+
+        Method: POST
+
+        URL: http://localhost:8081/api/v1/auth/verify-otp
+
+        Body (JSON): {"emailOrPhone": "john.doe@example.com", "code": "123456"}
+
+        Copy the token string from the response.
+
+2. Item Management
+
+    Get All Items (Public)
+
+        Method: GET
+
+        URL: http://localhost:8081/api/v1/items
+
+    Create Item (Protected)
+
+        Method: POST
+
+        URL: http://localhost:8081/api/v1/items
+
+        Headers: Authorization: Bearer <your_jwt_token>
+
+        Body (JSON):
+        JSON
+
+        {
+          "title": "Lost Gold Watch",
+          "category": "ELECTRONICS",
+          "type": "LOST",
+          "description": "Lost near Patan Durbar Square, has a leather strap.",
+          "latitude": 27.672,
+          "longitude": 85.325,
+          "addressText": "Patan Durbar Square, Lalitpur",
+          "dateLostOrFound": "2026-09-05T12:00:00Z",
+          "secretVerificationQuestion": "What brand is it?",
+          "secretAnswer": "Rolex"
+        }
+
+3. User Profile & Settings
+
+    Get Current Profile
+
+        Method: GET
+
+        URL: http://localhost:8081/api/v1/users/me
+
+        Headers: Authorization: Bearer <your_jwt_token>
+
+    Update Profile
+
+        Method: PUT
+
+        URL: http://localhost:8081/api/v1/users/me
+
+        Headers: Authorization: Bearer <your_jwt_token>
+
+        Body (JSON): {"name": "John Updated", "email": "john.doe@example.com", "province": "Bagmati", "district": "Lalitpur"}
+
+4. File Upload
+
+    Upload Image
+
+        Method: POST
+
+        URL: http://localhost:8081/api/v1/files/upload
+
+        Headers: Authorization: Bearer <your_jwt_token>
+
+        Body: Select form-data, add a key named file (change type to File), and select any image from your computer.
+
+5. Claims & Chats
+
+    Submit Claim
+
+        Method: POST
+
+        URL: http://localhost:8081/api/v1/claims
+
+        Headers: Authorization: Bearer <your_jwt_token>
+
+        Body (JSON): {"itemId": "<paste_item_uuid_here>", "proofDescription": "I have the box and receipt.", "secretAnswer": "Rolex", "contactEmailOrPhone": "john.doe@example.com"}
+
+    Get My Chats
+
+        Method: GET
+
+        URL: http://localhost:8081/api/v1/chats
+
+        Headers: Authorization: Bearer <your_jwt_token>
+
+
+The Remaining Chat Endpoints (Test in Postman)
+
+To test the WhatsApp-style chat functionality:
+
+    Send a Message to a Chat
+
+        Method: POST
+
+        URL: http://localhost:8081/api/v1/chats/<paste_chat_uuid_here>/messages
+
+        Headers: Authorization: Bearer <your_jwt_token>
+
+        Body (JSON):
+        JSON
+
+        {
+          "text": "Hello! Is this wallet still available?",
+          "attachmentUrl": null,
+          "attachmentType": null,
+          "attachmentName": null
+        }
+
+    Resolve (Close) a Chat
+
+        Method: PATCH
+
+        URL: http://localhost:8081/api/v1/chats/<paste_chat_uuid_here>/resolve
+
+        Headers: Authorization: Bearer <your_jwt_token>
+
+        Body: (Leave empty)
+
+2. The Remaining Item & File Endpoints (Test in Postman)
+
+    Get a Single Item by ID (Used for the Quick View modal)
+
+        Method: GET
+
+        URL: http://localhost:8081/api/v1/items/<paste_item_uuid_here>
+
+    View Uploaded Image (Used to display images on the frontend)
+
+        Method: GET
+
+        URL: http://localhost:8081/api/v1/files/<paste_file_name_here.jpg>
+
+        (No token needed, works directly in the browser too)
