@@ -30,4 +30,7 @@ public class CreateItemDTO {
 
     @NotNull
     private OffsetDateTime dateLostOrFound;
+
+    @NotBlank(message = "Verification code is required.")
+    private String otp;
 }

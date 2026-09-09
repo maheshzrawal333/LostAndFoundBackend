@@ -9,11 +9,14 @@ import org.maheshz.LAFbackend.dto.PaginatedResponseDTO;
 import org.maheshz.LAFbackend.enums.ItemStatus;
 import org.maheshz.LAFbackend.enums.ItemType;
 import org.maheshz.LAFbackend.service.ItemService;
+import org.maheshz.LAFbackend.service.OtpService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.web.bind.annotation.*;
 
 import java.security.Principal;
+import java.util.Map;
 import java.util.UUID;
 
 @RestController
@@ -23,6 +26,7 @@ import java.util.UUID;
 public class ItemController {
 
     private final ItemService itemService;
+    private final OtpService otpService;
 
     @GetMapping
     public ResponseEntity<PaginatedResponseDTO<ItemResponseDTO>> getAllItems(
@@ -49,7 +53,25 @@ public class ItemController {
     @PostMapping
     public ResponseEntity<ItemResponseDTO> createItem(@Valid @RequestBody CreateItemDTO dto, Principal principal, HttpServletRequest request) {
         String userEmail = principal.getName();
+
+        // --- NEW: Enterprise Cryptographic OTP Verification ---
+        if (!otpService.verifyOtp(userEmail, dto.getOtp())) {
+            // The word "code" triggers the frontend to display this strictly under the OTP input field
+            throw new BadCredentialsException("Invalid or expired verification code.");
+        }
+
         ItemResponseDTO savedItem = itemService.createItem(dto, userEmail, request);
         return new ResponseEntity<>(savedItem, HttpStatus.CREATED);
+    }
+
+    @PostMapping("/request-otp")
+    public ResponseEntity<?> requestItemOtp(Principal principal) {
+        // principal.getName() automatically extracts the logged-in user's email from the JWT token
+        String userEmail = principal.getName();
+
+        // Trigger the secure 6-digit code via Brevo asynchronously
+        otpService.generateAndSendOtp(userEmail);
+
+        return ResponseEntity.ok(Map.of("message", "Verification code sent to your email."));
     }
 }

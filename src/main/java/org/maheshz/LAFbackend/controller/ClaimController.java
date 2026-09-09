@@ -15,8 +15,10 @@ import org.maheshz.LAFbackend.repository.ClaimRepository;
 import org.maheshz.LAFbackend.repository.ItemRepository;
 import org.maheshz.LAFbackend.repository.MessageRepository;
 import org.maheshz.LAFbackend.repository.UserRepository;
+import org.maheshz.LAFbackend.service.OtpService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.web.bind.annotation.*;
 
 import java.security.Principal;
@@ -32,10 +34,18 @@ public class ClaimController {
     private final UserRepository userRepository;
     private final ChatRepository chatRepository;
     private final MessageRepository messageRepository;
+    private final OtpService otpService; // --- NEW: Inject OtpService ---
 
     @PostMapping
     public ResponseEntity<?> submitClaim(@Valid @RequestBody ClaimRequestDTO dto, Principal principal) {
-        User claimer = userRepository.findByEmail(principal.getName())
+        String userEmail = principal.getName();
+
+        // --- NEW: Enterprise Cryptographic OTP Verification ---
+        if (!otpService.verifyOtp(userEmail, dto.getOtp())) {
+            throw new BadCredentialsException("Invalid or expired verification code.");
+        }
+
+        User claimer = userRepository.findByEmail(userEmail)
                 .orElseThrow(() -> new ResourceNotFoundException("User not found"));
 
         Item item = itemRepository.findById(dto.getItemId())

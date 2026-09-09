@@ -1,63 +1,66 @@
 package org.maheshz.LAFbackend.service;
 
 import lombok.RequiredArgsConstructor;
+import org.maheshz.LAFbackend.entity.OtpEntity;
+import org.maheshz.LAFbackend.repository.OtpRepository;
 import org.maheshz.LAFbackend.service.email.EmailNotificationService;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.security.SecureRandom;
 import java.time.LocalDateTime;
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
 
 @Service
 @RequiredArgsConstructor
 public class OtpService {
 
     private final EmailNotificationService emailNotificationService;
-
-    // Thread-safe in-memory storage for OTPs.
-    // (Note: If you scale to multiple backend servers later, you will swap this map for Redis)
-    private final Map<String, OtpDetails> otpStorage = new ConcurrentHashMap<>();
-
-    // Cryptographically strong random number generator
+    private final OtpRepository otpRepository;
     private final SecureRandom secureRandom = new SecureRandom();
 
+    @Transactional
     public void generateAndSendOtp(String email) {
         // Generate a secure 6-digit random number (between 100000 and 999999)
         int randomNum = secureRandom.nextInt(900000) + 100000;
         String otpCode = String.valueOf(randomNum);
 
-        // Store the OTP tied to the email, setting it to expire in 5 minutes
-        otpStorage.put(email, new OtpDetails(otpCode, LocalDateTime.now().plusMinutes(5)));
+        // Enterprise Upsert Pattern: Fetch existing record, or create a new one if it doesn't exist
+        OtpEntity otpEntity = otpRepository.findByEmail(email)
+                .orElseGet(() -> OtpEntity.builder().email(email).build());
 
-        // Send the real, generated OTP via Brevo
+        // Update the fields with the new code and a fresh 5-minute timer
+        otpEntity.setOtpCode(otpCode);
+        otpEntity.setExpiresAt(LocalDateTime.now().plusMinutes(5));
+
+        // Save handles both INSERT (if new) and UPDATE (if it already existed)
+        otpRepository.save(otpEntity);
+
+        // Send the real, generated OTP via Brevo (executes asynchronously)
         emailNotificationService.sendOtpEmail(email, otpCode);
     }
 
+    @Transactional
     public boolean verifyOtp(String email, String otp) {
-        OtpDetails details = otpStorage.get(email);
+        OtpEntity otpEntity = otpRepository.findByEmail(email).orElse(null);
 
-        // Fail if no OTP was ever requested for this email
-        if (details == null) {
+        // Fail if no OTP exists for this email in the database
+        if (otpEntity == null) {
             return false;
         }
 
-        // Fail and delete the OTP if 5 minutes have passed
-        if (LocalDateTime.now().isAfter(details.expiresAt())) {
-            otpStorage.remove(email);
+        // Check if 5 minutes have passed
+        if (LocalDateTime.now().isAfter(otpEntity.getExpiresAt())) {
+            otpRepository.delete(otpEntity); // Delete expired code
             return false;
         }
 
-        // Success: Delete the OTP so it cannot be reused, then return true
-        if (details.code().equals(otp)) {
-            otpStorage.remove(email);
+        // Success: If the code matches, delete it so it cannot be reused, and return true
+        if (otpEntity.getOtpCode().equals(otp)) {
+            otpRepository.delete(otpEntity);
             return true;
         }
 
         // OTP did not match
         return false;
     }
-
-    // Helper record to hold the OTP string and its expiration timestamp
-    private record OtpDetails(String code, LocalDateTime expiresAt) {}
 }

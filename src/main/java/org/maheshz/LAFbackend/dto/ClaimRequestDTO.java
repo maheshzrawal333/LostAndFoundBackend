@@ -9,13 +9,20 @@ import java.util.UUID;
 public class ClaimRequestDTO {
     @NotNull(message = "Item ID is required")
     private UUID itemId;
+
     @NotBlank
     private String proofDescription;
+
     private String secretAnswer;
+
     @NotBlank
     private String contactEmailOrPhone;
 
     // Allow frontend to pass GPS data
     private Double latitude;
     private Double longitude;
+
+    // --- NEW: Receive the OTP from the frontend ---
+    @NotBlank(message = "Verification code is required.")
+    private String otp;
 }
