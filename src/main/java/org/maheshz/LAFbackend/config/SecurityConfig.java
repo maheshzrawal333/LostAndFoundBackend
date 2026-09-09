@@ -37,6 +37,10 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/api/v1/items/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/v1/files/**").permitAll()
                         .requestMatchers("/ws/**").permitAll()
+
+                        // ADDED: Allow public access to submit feedback without a JWT
+                        .requestMatchers(HttpMethod.POST, "/api/v1/feedback").permitAll()
+
                         .anyRequest().authenticated()
                 )
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))

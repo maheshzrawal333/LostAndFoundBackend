@@ -39,6 +39,9 @@ public class AuthController {
             return ResponseEntity.badRequest().body(Map.of("phone", "This phone number is already registered."));
         }
 
+        // TRIGGER THE EMAIL SEND
+        authService.requestRegistrationOtp(email);
+
         return ResponseEntity.ok(Map.of("message", "OTP sent successfully."));
     }
 
@@ -61,6 +64,10 @@ public class AuthController {
         if (email == null || !authService.doesEmailExist(email)) {
             return ResponseEntity.badRequest().body(Map.of("general", "No account found with this email address."));
         }
+
+        // TRIGGER THE EMAIL SEND
+        authService.requestPasswordResetOtp(email);
+
         return ResponseEntity.ok(Map.of("message", "Reset code sent successfully."));
     }
 
