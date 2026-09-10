@@ -6,14 +6,12 @@ import org.maheshz.LAFbackend.dto.ClaimRequestDTO;
 import org.maheshz.LAFbackend.entity.Chat;
 import org.maheshz.LAFbackend.entity.Claim;
 import org.maheshz.LAFbackend.entity.Item;
-import org.maheshz.LAFbackend.entity.Message;
 import org.maheshz.LAFbackend.entity.User;
 import org.maheshz.LAFbackend.enums.ItemStatus;
 import org.maheshz.LAFbackend.exception.ResourceNotFoundException;
 import org.maheshz.LAFbackend.repository.ChatRepository;
 import org.maheshz.LAFbackend.repository.ClaimRepository;
 import org.maheshz.LAFbackend.repository.ItemRepository;
-import org.maheshz.LAFbackend.repository.MessageRepository;
 import org.maheshz.LAFbackend.repository.UserRepository;
 import org.maheshz.LAFbackend.service.OtpService;
 import org.springframework.http.HttpStatus;
@@ -33,14 +31,12 @@ public class ClaimController {
     private final ItemRepository itemRepository;
     private final UserRepository userRepository;
     private final ChatRepository chatRepository;
-    private final MessageRepository messageRepository;
-    private final OtpService otpService; // --- NEW: Inject OtpService ---
+    private final OtpService otpService;
 
     @PostMapping
     public ResponseEntity<?> submitClaim(@Valid @RequestBody ClaimRequestDTO dto, Principal principal) {
         String userEmail = principal.getName();
 
-        // --- NEW: Enterprise Cryptographic OTP Verification ---
         if (!otpService.verifyOtp(userEmail, dto.getOtp())) {
             throw new BadCredentialsException("Invalid or expired verification code.");
         }
@@ -56,7 +52,6 @@ public class ClaimController {
                     .body("{\"error\": \"Security Exception: You cannot claim an item you reported.\"}");
         }
 
-        // --- NEW: Prevent duplicate claims ---
         if (claimRepository.existsByItemIdAndClaimerId(item.getId(), claimer.getId())) {
             return ResponseEntity.status(HttpStatus.CONFLICT)
                     .body("{\"error\": \"You have already established a secure connection for this item.\"}");
@@ -78,17 +73,8 @@ public class ClaimController {
                 .finder(item.getReportedBy())
                 .claimer(claimer)
                 .build();
-        chat = chatRepository.save(chat);
 
-        Message initialMessage = Message.builder()
-                .chat(chat)
-                .sender(claimer)
-                .text("System: User has verified their identity. A secure channel is now open.")
-                .isSystemMessage(true)
-                .build();
-        messageRepository.save(initialMessage);
-
-        chat.setUpdatedAt(initialMessage.getSentAt());
+        // --- NEW: System message generation removed completely. Simply save the chat directly. ---
         chatRepository.save(chat);
 
         return ResponseEntity.ok().body("{\"message\": \"Claim submitted and chat created successfully\"}");

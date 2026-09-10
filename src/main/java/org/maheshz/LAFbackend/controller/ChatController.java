@@ -43,7 +43,11 @@ public class ChatController {
         List<ChatResponseDTO> response = chats.stream().map(chat -> {
             boolean isFinder = chat.getFinder().getId().equals(currentUser.getId());
             User otherUser = isFinder ? chat.getClaimer() : chat.getFinder();
-            String lastMsgText = chat.getMessages().isEmpty() ? "No messages yet" : chat.getMessages().get(chat.getMessages().size() - 1).getText();
+
+            List<Message> userMessages = chat.getMessages().stream()
+                    .filter(msg -> !msg.isSystemMessage())
+                    .collect(Collectors.toList());
+            String lastMsgText = userMessages.isEmpty() ? "No messages yet" : userMessages.get(userMessages.size() - 1).getText();
 
             List<ChatResponseDTO.MessageDTO> messageDTOs = chat.getMessages().stream().map(msg -> {
                 String senderType = msg.isSystemMessage() ? "system" : msg.getSender().getId().equals(currentUser.getId()) ? "me" : "them";
@@ -55,7 +59,24 @@ public class ChatController {
             boolean closureRequestedByMe = chat.getClosureRequestedBy() != null && chat.getClosureRequestedBy().getId().equals(currentUser.getId());
             boolean closureRequestedByOther = chat.getClosureRequestedBy() != null && !chat.getClosureRequestedBy().getId().equals(currentUser.getId());
 
-            return ChatResponseDTO.builder().id(chat.getId()).itemTitle(chat.getItem().getTitle()).reference("REF: TRK-" + chat.getItem().getId().toString().substring(0, 6).toUpperCase()).otherUser(otherUser.getName()).otherUserAvatar(otherUser.getAvatarUrl()).role(isFinder ? "Finder" : "Claimer").status(chat.getStatus()).lastMessage(lastMsgText).time(chat.getUpdatedAt()).unread(0).isPoster(isPoster).closureRequestedByMe(closureRequestedByMe).closureRequestedByOther(closureRequestedByOther).resolutionOtp(isPoster ? chat.getResolutionOtp() : null).messages(messageDTOs).build();
+            return ChatResponseDTO.builder()
+                    .id(chat.getId())
+                    .itemTitle(chat.getItem().getTitle())
+                    .itemType(chat.getItem().getType().name()) // --- NEW: Injects LOST or FOUND
+                    .reference("REF: TRK-" + chat.getItem().getId().toString().substring(0, 6).toUpperCase())
+                    .otherUser(otherUser.getName())
+                    .otherUserAvatar(otherUser.getAvatarUrl())
+                    .role(isFinder ? "Finder" : "Claimer")
+                    .status(chat.getStatus())
+                    .lastMessage(lastMsgText)
+                    .time(chat.getUpdatedAt())
+                    .unread(0)
+                    .isPoster(isPoster)
+                    .closureRequestedByMe(closureRequestedByMe)
+                    .closureRequestedByOther(closureRequestedByOther)
+                    .resolutionOtp(isPoster ? chat.getResolutionOtp() : null)
+                    .messages(messageDTOs)
+                    .build();
         }).collect(Collectors.toList());
 
         return ResponseEntity.ok(response);
@@ -106,7 +127,6 @@ public class ChatController {
         return ResponseEntity.ok(Map.of("message", "Code generated securely."));
     }
 
-    // NEW FIX: Allow the poster to cancel the OTP handshake and return to chatting
     @PatchMapping("/{chatId}/cancel-resolve-otp")
     public ResponseEntity<?> cancelResolveOtp(@PathVariable UUID chatId, Principal principal) {
         User currentUser = userRepository.findByEmail(principal.getName()).orElseThrow();
@@ -117,9 +137,6 @@ public class ChatController {
         }
 
         chat.setResolutionOtp(null);
-        Message systemMessage = Message.builder().chat(chat).isSystemMessage(true)
-                .text("Resolution handshake cancelled. You can continue chatting.").build();
-        messageRepository.save(systemMessage);
         chatRepository.save(chat);
 
         broadcastToChat(chatId, "STATE_UPDATE", Map.of("action", "OTP_CANCELLED"));
@@ -128,7 +145,6 @@ public class ChatController {
 
     @PatchMapping("/{chatId}/resolve")
     public ResponseEntity<?> resolveChat(@PathVariable UUID chatId, @RequestBody Map<String, String> payload, Principal principal) {
-        User currentUser = userRepository.findByEmail(principal.getName()).orElseThrow();
         String otp = payload.get("otp");
         Chat chat = chatRepository.findById(chatId).orElseThrow();
 
@@ -138,10 +154,6 @@ public class ChatController {
 
         chat.setStatus(ItemStatus.RESOLVED);
         chat.getItem().setStatus(ItemStatus.RESOLVED);
-
-        Message systemMessage = Message.builder().chat(chat).isSystemMessage(true)
-                .text("Handshake successful! OTP verified. Item exchange confirmed and closed.").build();
-        messageRepository.save(systemMessage);
         chatRepository.save(chat);
 
         broadcastToChat(chatId, "STATE_UPDATE", Map.of("action", "CHAT_RESOLVED"));
@@ -154,24 +166,17 @@ public class ChatController {
         Chat chat = chatRepository.findById(chatId).orElseThrow();
 
         chat.setClosureRequestedBy(currentUser);
-        Message systemMessage = Message.builder().chat(chat).isSystemMessage(true)
-                .text("User requested to close this connection as 'Not a Match'. Waiting for confirmation.").build();
-        messageRepository.save(systemMessage);
         chatRepository.save(chat);
 
         broadcastToChat(chatId, "STATE_UPDATE", Map.of("action", "CLOSURE_REQUESTED", "requesterId", currentUser.getId()));
         return ResponseEntity.ok().build();
     }
 
-    // NEW FIX: Handles "Cancel Request" and "Decline" buttons
     @PatchMapping("/{chatId}/cancel-close")
     public ResponseEntity<?> cancelCloseChat(@PathVariable UUID chatId, Principal principal) {
         Chat chat = chatRepository.findById(chatId).orElseThrow();
 
         chat.setClosureRequestedBy(null);
-        Message systemMessage = Message.builder().chat(chat).isSystemMessage(true)
-                .text("Closure request cancelled. You can continue chatting.").build();
-        messageRepository.save(systemMessage);
         chatRepository.save(chat);
 
         broadcastToChat(chatId, "STATE_UPDATE", Map.of("action", "CLOSURE_CANCELLED"));
@@ -180,15 +185,10 @@ public class ChatController {
 
     @PatchMapping("/{chatId}/approve-close")
     public ResponseEntity<?> approveCloseChat(@PathVariable UUID chatId, Principal principal) {
-        User currentUser = userRepository.findByEmail(principal.getName()).orElseThrow();
         Chat chat = chatRepository.findById(chatId).orElseThrow();
 
         chat.setStatus(ItemStatus.RESOLVED);
         chat.setClosureRequestedBy(null);
-
-        Message systemMessage = Message.builder().chat(chat).isSystemMessage(true)
-                .text("Mutual agreement reached. Connection closed as 'Not a Match'.").build();
-        messageRepository.save(systemMessage);
         chatRepository.save(chat);
 
         broadcastToChat(chatId, "STATE_UPDATE", Map.of("action", "CHAT_RESOLVED"));

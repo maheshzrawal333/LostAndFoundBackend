@@ -16,6 +16,7 @@ import java.util.UUID;
 public class ChatResponseDTO {
     private UUID id;
     private String itemTitle;
+    private String itemType; // --- NEW: Tells the frontend if it's a LOST or FOUND post
     private String reference;
     private String otherUser;
     private String otherUserAvatar;
@@ -25,7 +26,6 @@ public class ChatResponseDTO {
     private LocalDateTime time;
     private int unread;
 
-    // --- FIXED: @JsonProperty forces Jackson to send the exact name to the frontend ---
     @JsonProperty("isPoster")
     private boolean isPoster;
 

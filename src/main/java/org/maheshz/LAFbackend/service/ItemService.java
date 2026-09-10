@@ -37,6 +37,21 @@ public class ItemService {
     private final ClaimRepository claimRepository;
     private final PasswordEncoder passwordEncoder;
 
+    // --- NEW: Enterprise Pre-OTP Rate Limiting Validation ---
+    @Transactional(readOnly = true)
+    public void validateUserPostLimit(String userEmail) {
+        User currentUser = userRepository.findByEmail(userEmail)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+
+        OffsetDateTime oneWeekAgo = OffsetDateTime.now().minusWeeks(1);
+        long recentPostsCount = itemRepository.countByReportedByAndCreatedAtAfter(currentUser, oneWeekAgo);
+
+        if (recentPostsCount >= 3) {
+            log.warn("[SPAM PREVENTION] User {} hit the 3-post weekly limit.", currentUser.getId());
+            throw new IllegalStateException("You have reached the maximum limit of 3 posts per week to prevent spam. Please try again later.");
+        }
+    }
+
     @Transactional(readOnly = true)
     public ItemResponseDTO getItemById(UUID id, String currentUserEmail) {
         Item item = itemRepository.findById(id)
@@ -53,7 +68,6 @@ public class ItemService {
 
         Pageable pageable = PageRequest.of(page, size, Sort.by("createdAt").descending());
 
-        // FIX: Pass empty strings ("") instead of null to prevent PostgreSQL bytea casting errors
         String safeSearch = (search != null && !search.isBlank()) ? search : "";
         String safeLocation = (location != null && !location.isBlank()) ? location : "";
 
@@ -80,13 +94,8 @@ public class ItemService {
         User currentUser = userRepository.findByEmail(userEmail)
                 .orElseThrow(() -> new ResourceNotFoundException("User not found"));
 
-        OffsetDateTime oneWeekAgo = OffsetDateTime.now().minusWeeks(1);
-        long recentPostsCount = itemRepository.countByReportedByAndCreatedAtAfter(currentUser, oneWeekAgo);
-
-        if (recentPostsCount >= 3) {
-            log.warn("[SPAM PREVENTION] User {} hit the 3-post weekly limit.", currentUser.getId());
-            throw new IllegalStateException("You have reached the maximum limit of 3 posts per week to prevent spam. Please try again later.");
-        }
+        // Double-check the limit right before database insertion to prevent race conditions
+        validateUserPostLimit(userEmail);
 
         GeoLocation geoLocation = new GeoLocation(dto.getLatitude(), dto.getLongitude(), dto.getAddressText());
 
