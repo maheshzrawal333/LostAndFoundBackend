@@ -54,8 +54,9 @@ public class SecurityConfig {
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
 
-        // FIX 2: Added common Vite fallback ports and 127.0.0.1 mappings
+        // FIX: Added your live Cloudflare Pages URL back into the allowed list
         configuration.setAllowedOrigins(List.of(
+                "https://lostandfoundnepal.pages.dev", // <-- Must be here for production
                 "http://localhost:5173",
                 "http://127.0.0.1:5173",
                 "http://localhost:5174",
@@ -64,7 +65,6 @@ public class SecurityConfig {
 
         configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
 
-        // Added standard headers just in case
         configuration.setAllowedHeaders(List.of("Authorization", "Content-Type", "Accept", "Origin", "X-Requested-With"));
         configuration.setAllowCredentials(true);
 
