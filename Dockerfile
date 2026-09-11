@@ -10,4 +10,6 @@ FROM eclipse-temurin:23-jre
 WORKDIR /app
 COPY --from=build /app/target/*.jar app.jar
 EXPOSE 10000
-ENTRYPOINT ["java", "-jar", "app.jar"]
+
+# STRICT MEMORY LIMITS: Prevent Render from killing the app
+ENTRYPOINT ["java", "-Xmx256m", "-Xms256m", "-XX:MaxMetaspaceSize=128m", "-jar", "app.jar"]
