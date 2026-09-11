@@ -1,0 +1,18 @@
+FROM ubuntu:latest
+LABEL authors="mahes"
+
+ENTRYPOINT ["top", "-b"]
+
+# Build stage: Compiles your code safely in the cloud
+FROM maven:3.9-eclipse-temurin-23 AS build
+WORKDIR /app
+COPY pom.xml .
+COPY src ./src
+RUN mvn clean package -DskipTests
+
+# Run stage: The actual server that will host your app
+FROM eclipse-temurin:23-jre
+WORKDIR /app
+COPY --from=build /app/target/*.jar app.jar
+EXPOSE 10000
+ENTRYPOINT ["java", "-jar", "app.jar"]
