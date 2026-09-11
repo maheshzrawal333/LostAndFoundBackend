@@ -18,11 +18,9 @@ public class ClaimRequestDTO {
     @NotBlank
     private String contactEmailOrPhone;
 
-    // Allow frontend to pass GPS data
     private Double latitude;
     private Double longitude;
 
-    // --- NEW: Receive the OTP from the frontend ---
     @NotBlank(message = "Verification code is required.")
     private String otp;
 }

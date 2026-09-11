@@ -24,7 +24,7 @@ public class OtpService {
         int randomNum = secureRandom.nextInt(900000) + 100000;
         String otpCode = String.valueOf(randomNum);
 
-        // Enterprise Upsert Pattern: Fetch existing record, or create a new one if it doesn't exist
+        // Fetch existing record, or create a new one if it doesn't exist
         OtpEntity otpEntity = otpRepository.findByEmail(email)
                 .orElseGet(() -> OtpEntity.builder().email(email).build());
 

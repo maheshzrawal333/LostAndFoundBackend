@@ -22,7 +22,7 @@ public class Message {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "sender_id")
-    private User sender; // Can be null if it is a system message
+    private User sender;
 
     @Column(nullable = false)
     private boolean isSystemMessage;

@@ -31,14 +31,11 @@ public class SecurityConfig {
         http
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
                 .authorizeHttpRequests(auth -> auth
-                        // FIX 1: Explicitly allow all OPTIONS preflight requests
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                         .requestMatchers("/api/v1/auth/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/v1/items/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/v1/files/**").permitAll()
                         .requestMatchers("/ws/**").permitAll()
-
-                        // ADDED: Allow public access to submit feedback without a JWT
                         .requestMatchers(HttpMethod.POST, "/api/v1/feedback").permitAll()
 
                         .anyRequest().authenticated()
@@ -53,10 +50,8 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-
-        // FIX: Added your live Cloudflare Pages URL back into the allowed list
         configuration.setAllowedOrigins(List.of(
-                "https://lostandfoundnepal.pages.dev", // <-- Must be here for production
+                "https://lostandfoundnepal.pages.dev",
                 "http://localhost:5173",
                 "http://127.0.0.1:5173",
                 "http://localhost:5174",

@@ -62,7 +62,7 @@ public class ChatController {
             return ChatResponseDTO.builder()
                     .id(chat.getId())
                     .itemTitle(chat.getItem().getTitle())
-                    .itemType(chat.getItem().getType().name()) // --- NEW: Injects LOST or FOUND
+                    .itemType(chat.getItem().getType().name())
                     .reference("REF: TRK-" + chat.getItem().getId().toString().substring(0, 6).toUpperCase())
                     .otherUser(otherUser.getName())
                     .otherUserAvatar(otherUser.getAvatarUrl())

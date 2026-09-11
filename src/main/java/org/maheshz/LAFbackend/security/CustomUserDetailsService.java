@@ -16,13 +16,12 @@ public class CustomUserDetailsService implements UserDetailsService {
 
     @Override
     public UserDetails loadUserByUsername(String emailOrPhone) throws UsernameNotFoundException {
-        // We allow login via Email for this implementation
         User user = userRepository.findByEmail(emailOrPhone)
                 .orElseThrow(() -> new UsernameNotFoundException("User not found with email: " + emailOrPhone));
 
         return org.springframework.security.core.userdetails.User
                 .withUsername(user.getEmail())
-                .password(user.getPassword()) // Required by Spring, even if we use OTP
+                .password(user.getPassword())
                 .authorities(user.getRole().name())
                 .build();
     }

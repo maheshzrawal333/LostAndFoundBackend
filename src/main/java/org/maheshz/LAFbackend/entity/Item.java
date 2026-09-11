@@ -56,7 +56,6 @@ public class Item {
     private String secretVerificationQuestion;
     private String secretAnswerHash;
 
-    // --- SILENT TRACKING DATA ---
     @Column(name = "uploader_ip")
     private String uploaderIp;
 

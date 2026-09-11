@@ -39,7 +39,7 @@ public class User {
     @Column(nullable = false)
     private Role role = Role.USER;
 
-    // --- NEW RATE LIMITING FIELDS ---
+    // --- RATE LIMITING FIELDS ---
     private Integer profileUpdateCount;
     private LocalDateTime profileUpdateCycleStart;
 

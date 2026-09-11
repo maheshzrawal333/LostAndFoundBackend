@@ -74,7 +74,6 @@ public class ClaimController {
                 .claimer(claimer)
                 .build();
 
-        // --- NEW: System message generation removed completely. Simply save the chat directly. ---
         chatRepository.save(chat);
 
         return ResponseEntity.ok().body("{\"message\": \"Claim submitted and chat created successfully\"}");

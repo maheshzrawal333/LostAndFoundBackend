@@ -29,7 +29,6 @@ public class Claim {
 
     private String contactEmailOrPhone;
 
-    // --- CONSENT TRACKING DATA ---
     @Column(name = "claimer_latitude")
     private Double claimerLatitude;
 

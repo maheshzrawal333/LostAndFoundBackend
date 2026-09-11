@@ -37,7 +37,7 @@ public class ItemService {
     private final ClaimRepository claimRepository;
     private final PasswordEncoder passwordEncoder;
 
-    // --- NEW: Enterprise Pre-OTP Rate Limiting Validation ---
+    // --- Enterprise Pre-OTP Rate Limiting Validation ---
     @Transactional(readOnly = true)
     public void validateUserPostLimit(String userEmail) {
         User currentUser = userRepository.findByEmail(userEmail)

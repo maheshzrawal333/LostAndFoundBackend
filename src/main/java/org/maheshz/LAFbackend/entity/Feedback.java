@@ -23,7 +23,7 @@ public class Feedback {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "submitted_by_user_id")
-    private User submittedBy; // Can be null if guest feedback is allowed
+    private User submittedBy;
 
     @CreationTimestamp
     private LocalDateTime submittedAt;

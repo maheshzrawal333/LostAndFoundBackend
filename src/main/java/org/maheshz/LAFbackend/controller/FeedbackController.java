@@ -21,7 +21,7 @@ public class FeedbackController {
 
     private final FeedbackRepository feedbackRepository;
     private final UserRepository userRepository;
-    private final EmailNotificationService emailNotificationService; // INJECTED
+    private final EmailNotificationService emailNotificationService;
 
     @Data
     public static class FeedbackRequestDTO {

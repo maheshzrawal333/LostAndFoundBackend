@@ -33,7 +33,7 @@ public class AuthService {
         return userRepository.findByPhone(phone).isPresent();
     }
 
-    // --- NEW: Trigger OTP for new registrations ---
+    // --- Trigger OTP for new registrations ---
     public void requestRegistrationOtp(String email) {
         if (doesEmailExist(email)) {
             throw new BadCredentialsException("An account with this email already exists.");
@@ -41,7 +41,7 @@ public class AuthService {
         otpService.generateAndSendOtp(email);
     }
 
-    // --- NEW: Trigger OTP for password resets ---
+    // --- Trigger OTP for password resets ---
     public void requestPasswordResetOtp(String email) {
         if (!doesEmailExist(email)) {
             throw new BadCredentialsException("Account not found.");

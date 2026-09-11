@@ -66,7 +66,7 @@ public class ItemController {
     public ResponseEntity<?> requestItemOtp(Principal principal) {
         String userEmail = principal.getName();
 
-        // --- NEW: Block the OTP email entirely if the user has hit their limit ---
+        // Block the OTP email entirely if the user has hit their limit ---
         itemService.validateUserPostLimit(userEmail);
 
         otpService.generateAndSendOtp(userEmail);

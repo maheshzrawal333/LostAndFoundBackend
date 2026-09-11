@@ -36,7 +36,7 @@ public class RealEmailServiceImpl implements EmailNotificationService {
         }
     }
 
-    @Async // Forces this method to execute in a background thread
+    @Async
     @Override
     public void sendFeedbackAlert(String type, String message, String submittedBy) {
         try {

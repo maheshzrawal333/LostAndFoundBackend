@@ -16,7 +16,7 @@ import java.util.UUID;
 public class ChatResponseDTO {
     private UUID id;
     private String itemTitle;
-    private String itemType; // --- NEW: Tells the frontend if it's a LOST or FOUND post
+    private String itemType;
     private String reference;
     private String otherUser;
     private String otherUserAvatar;

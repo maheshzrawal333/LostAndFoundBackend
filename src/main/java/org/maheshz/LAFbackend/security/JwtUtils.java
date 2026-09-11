@@ -14,7 +14,6 @@ import java.util.function.Function;
 @Component
 public class JwtUtils {
 
-    // SECURITY FIX: Key is now injected from application environment, not hardcoded.
     @Value("${jwt.secret}")
     private String secretKey;
 
