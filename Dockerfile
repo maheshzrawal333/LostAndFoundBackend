@@ -1,8 +1,3 @@
-FROM ubuntu:latest
-LABEL authors="mahes"
-
-ENTRYPOINT ["top", "-b"]
-
 # Build stage: Compiles your code safely in the cloud
 FROM maven:3.9-eclipse-temurin-23 AS build
 WORKDIR /app
