@@ -12,7 +12,6 @@ import java.util.Map;
 @RestController
 @RequestMapping("/api/v1/files")
 @RequiredArgsConstructor
-@CrossOrigin(origins = "http://localhost:5173")
 public class FileController {
 
     private final FileService fileService;

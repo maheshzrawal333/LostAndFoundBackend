@@ -22,7 +22,6 @@ import java.util.UUID;
 @RestController
 @RequestMapping("/api/v1/items")
 @RequiredArgsConstructor
-@CrossOrigin(origins = "http://localhost:5173")
 public class ItemController {
 
     private final ItemService itemService;
