@@ -56,7 +56,7 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.sendRequest({\r\n    url: pm.collectionVariables.get(\"base_url\") + \"/test/get-otp?email=\" + pm.collectionVariables.get(\"poster_email\"),\r\n    method: 'GET'\r\n}, function (err, res) {\r\n    pm.collectionVariables.set(\"current_otp\", res.json().otpCode);\r\n});"
+                  "pm.sendRequest({\r\n    url: pm.variables.get(\"base_url\") + \"/test/get-otp?email=\" + pm.collectionVariables.get(\"poster_email\"),\r\n    method: 'GET'\r\n}, function (err, res) {\r\n    pm.collectionVariables.set(\"current_otp\", res.json().otpCode);\r\n});"
                 ]
               }
             },
@@ -260,7 +260,7 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.sendRequest({\r\n    url: pm.collectionVariables.get(\"base_url\") + \"/test/get-otp?email=\" + pm.collectionVariables.get(\"poster_email\"),\r\n    method: 'GET'\r\n}, function (err, res) {\r\n    pm.collectionVariables.set(\"current_otp\", res.json().otpCode);\r\n});"
+                  "pm.sendRequest({\r\n    url: pm.variables.get(\"base_url\") + \"/test/get-otp?email=\" + pm.collectionVariables.get(\"poster_email\"),\r\n    method: 'GET'\r\n}, function (err, res) {\r\n    pm.collectionVariables.set(\"current_otp\", res.json().otpCode);\r\n});"
                 ]
               }
             },
@@ -344,7 +344,7 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "const baseUrl = pm.collectionVariables.get(\"base_url\");\r\nconst claimerEmail = pm.collectionVariables.get(\"claimer_email\");\r\nconst claimerPhone = pm.collectionVariables.get(\"claimer_phone\");\r\nconst pwd = pm.collectionVariables.get(\"test_password\");\r\n\r\n// 1. Request Claimer Auth OTP\r\npm.sendRequest({\r\n    url: baseUrl + \"/auth/request-otp\", method: 'POST', header: 'Content-Type:application/json',\r\n    body: { mode: 'raw', raw: JSON.stringify({ email: claimerEmail, phone: claimerPhone }) }\r\n}, function () {\r\n    // 2. Fetch Auth OTP\r\n    pm.sendRequest(baseUrl + \"/test/get-otp?email=\" + claimerEmail, function (err, res) {\r\n        // 3. Verify Auth OTP & Register\r\n        pm.sendRequest({\r\n            url: baseUrl + \"/auth/verify-otp\", method: 'POST', header: 'Content-Type:application/json',\r\n            body: { mode: 'raw', raw: JSON.stringify({ emailOrPhone: claimerEmail, code: res.json().otpCode, password: pwd, phone: claimerPhone }) }\r\n        }, function (err2, res2) {\r\n            let token = res2.json().token;\r\n            pm.collectionVariables.set(\"claimer_token\", token);\r\n            \r\n            // 4. Request Item Claim OTP\r\n            pm.sendRequest({ url: baseUrl + \"/items/request-otp\", method: 'POST', header: 'Authorization: Bearer ' + token }, function () {\r\n                // 5. Fetch Item Claim OTP\r\n                pm.sendRequest(baseUrl + \"/test/get-otp?email=\" + claimerEmail, function (err3, res3) {\r\n                    pm.collectionVariables.set(\"current_otp\", res3.json().otpCode);\r\n                    \r\n                    // CRITICAL FIX: Force Postman to attach the token instantly to the main request\r\n                    pm.request.headers.upsert({\r\n                        key: 'Authorization', \r\n                        value: 'Bearer ' + token\r\n                    });\r\n                });\r\n            });\r\n        });\r\n    });\r\n});"
+                  "const baseUrl = pm.variables.get(\"base_url\");\r\nconst claimerEmail = pm.collectionVariables.get(\"claimer_email\");\r\nconst claimerPhone = pm.collectionVariables.get(\"claimer_phone\");\r\nconst pwd = pm.collectionVariables.get(\"test_password\");\r\n\r\n// 1. Request Claimer Auth OTP\r\npm.sendRequest({\r\n    url: baseUrl + \"/auth/request-otp\", method: 'POST', header: 'Content-Type:application/json',\r\n    body: { mode: 'raw', raw: JSON.stringify({ email: claimerEmail, phone: claimerPhone }) }\r\n}, function () {\r\n    // 2. Fetch Auth OTP\r\n    pm.sendRequest(baseUrl + \"/test/get-otp?email=\" + claimerEmail, function (err, res) {\r\n        // 3. Verify Auth OTP & Register\r\n        pm.sendRequest({\r\n            url: baseUrl + \"/auth/verify-otp\", method: 'POST', header: 'Content-Type:application/json',\r\n            body: { mode: 'raw', raw: JSON.stringify({ emailOrPhone: claimerEmail, code: res.json().otpCode, password: pwd, phone: claimerPhone }) }\r\n        }, function (err2, res2) {\r\n            let token = res2.json().token;\r\n            pm.collectionVariables.set(\"claimer_token\", token);\r\n            \r\n            // 4. Request Item Claim OTP\r\n            pm.sendRequest({ url: baseUrl + \"/items/request-otp\", method: 'POST', header: 'Authorization: Bearer ' + token }, function () {\r\n                // 5. Fetch Item Claim OTP\r\n                pm.sendRequest(baseUrl + \"/test/get-otp?email=\" + claimerEmail, function (err3, res3) {\r\n                    pm.collectionVariables.set(\"current_otp\", res3.json().otpCode);\r\n                    \r\n                    // CRITICAL FIX: Force Postman to attach the token instantly to the main request\r\n                    pm.request.headers.upsert({\r\n                        key: 'Authorization', \r\n                        value: 'Bearer ' + token\r\n                    });\r\n                });\r\n            });\r\n        });\r\n    });\r\n});"
                 ]
               }
             },
@@ -476,7 +476,7 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.sendRequest({\r\n    url: pm.collectionVariables.get(\"base_url\") + \"/chats\",\r\n    method: 'GET',\r\n    header: 'Authorization: Bearer ' + pm.collectionVariables.get(\"poster_token\")\r\n}, function (err, res) {\r\n    var chat = res.json().find(c => c.id === pm.collectionVariables.get(\"chat_id\"));\r\n    pm.collectionVariables.set(\"resolution_otp\", chat.resolutionOtp);\r\n});"
+                  "pm.sendRequest({\r\n    url: pm.variables.get(\"base_url\") + \"/chats\",\r\n    method: 'GET',\r\n    header: 'Authorization: Bearer ' + pm.collectionVariables.get(\"poster_token\")\r\n}, function (err, res) {\r\n    var chat = res.json().find(c => c.id === pm.collectionVariables.get(\"chat_id\"));\r\n    pm.collectionVariables.set(\"resolution_otp\", chat.resolutionOtp);\r\n});"
                 ]
               }
             }
