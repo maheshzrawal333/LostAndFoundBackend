@@ -10,11 +10,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      # Upgraded to v5 to fix the yellow deprecation warning
       - uses: actions/setup-java@v5
         with:
           java-version: '23'
           distribution: 'temurin'
+          cache: maven
 
       - name: Start Spring Boot
         run: |
@@ -22,13 +22,14 @@ jobs:
           chmod +x mvnw
           ./mvnw spring-boot:run "-Dspring-boot.run.profiles=test" &
           
-          # Forces GitHub to wait dynamically until port 8081 opens
-          echo "Waiting for Spring Boot to start on port 8081..."
-          timeout 180 bash -c 'while ! nc -z localhost 8081; do sleep 3; done'
-          echo "Server is up! Running tests..."
+          echo "Waiting for Spring Boot to fully boot..."
+          # Bulletproof wait: Actually checks your API endpoint instead of just the port
+          timeout 180 bash -c 'until curl --silent --fail http://127.0.0.1:8081/api/v1/items > /dev/null; do echo "Waiting..."; sleep 3; done'
+          echo "Server is fully ready!"
 
       - name: Install Newman
         run: npm install -g newman
 
       - name: Run Postman Tests
-        run: newman run postman/LostAndFound.postman_collection.json --working-dir postman/
+        # Injects the explicit IPv4 base URL to prevent Node.js IPv6 routing failures
+        run: newman run postman/LostAndFound.postman_collection.json --working-dir postman/ --env-var "base_url=http://127.0.0.1:8081/api/v1"
