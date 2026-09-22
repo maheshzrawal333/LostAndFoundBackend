@@ -1,0 +1,657 @@
+{
+  "info": {
+    "_postman_id": "8087aae6-d9c6-4232-9830-60089a6099a5",
+    "name": "LostAndFound",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "_exporter_id": "58297232",
+    "_collection_link": "https://go.postman.co/collection/58297232-8087aae6-d9c6-4232-9830-60089a6099a5?source=collection_link"
+  },
+  "item": [
+    {
+      "name": "Authentication & Users",
+      "item": [
+        {
+          "name": "Request OTP",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"OTP requested\", function () { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\r\n\"email\": \"{{poster_email}}\", \r\n\"phone\": \"{{poster_phone}}\"\r\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/auth/request-otp",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "auth",
+                "request-otp"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Verify OTP",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.sendRequest({\r\n    url: pm.collectionVariables.get(\"base_url\") + \"/test/get-otp?email=\" + pm.collectionVariables.get(\"poster_email\"),\r\n    method: 'GET'\r\n}, function (err, res) {\r\n    pm.collectionVariables.set(\"current_otp\", res.json().otpCode);\r\n});"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Registered\", function () { pm.response.to.have.status(200); });\r\npm.collectionVariables.set(\"poster_token\", pm.response.json().token);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\r\n\"emailOrPhone\": \"{{poster_email}}\", \r\n\"code\": \"{{current_otp}}\", \r\n\"password\": \"{{test_password}}\", \r\n\"phone\": \"{{poster_phone}}\"\r\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/auth/verify-otp",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "auth",
+                "verify-otp"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Login",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Logged in\", function () { pm.response.to.have.status(200); });\r\npm.collectionVariables.set(\"poster_token\", pm.response.json().token);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"email\": \"{{poster_email}}\", \"password\": \"{{test_password}}\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/auth/login",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "auth",
+                "login"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Asserts email matches",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Email matches\", function () {\r\n    pm.expect(pm.response.json().email).to.eql(pm.collectionVariables.get(\"poster_email\"));\r\n});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{poster_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/users/me",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "users",
+                "me"
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Items & Files",
+      "item": [
+        {
+          "name": "Upload",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"File uploaded\", function () { pm.response.to.have.status(200); });\r\npm.collectionVariables.set(\"file_url\", pm.response.json().url);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{poster_token}}"
+              }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "file",
+                  "type": "file",
+                  "src": [
+                    "zoro.jpg"
+                  ]
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{base_url}}/files/upload",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "files",
+                "upload"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Request OTP",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Item OTP requested\", function () { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{poster_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/items/request-otp",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "items",
+                "request-otp"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Final Upload",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.sendRequest({\r\n    url: pm.collectionVariables.get(\"base_url\") + \"/test/get-otp?email=\" + pm.collectionVariables.get(\"poster_email\"),\r\n    method: 'GET'\r\n}, function (err, res) {\r\n    pm.collectionVariables.set(\"current_otp\", res.json().otpCode);\r\n});"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Item Created\", function () { pm.response.to.have.status(201); });\r\npm.collectionVariables.set(\"item_id\", pm.response.json().id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{poster_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\r\n  \"title\": \"Automated Post\",\r\n  \"category\": \"ELECTRONICS\",\r\n  \"type\": \"LOST\",\r\n  \"description\": \"Lost during automated testing.\",\r\n  \"imageUrls\": [\"{{file_url}}\"],\r\n  \"latitude\": 27.7172,\r\n  \"longitude\": 85.3240,\r\n  \"addressText\": \"Kathmandu\",\r\n  \"dateLostOrFound\": \"2026-09-21T10:00:00Z\",\r\n  \"otp\": \"{{current_otp}}\"\r\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/items",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "items"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Show Items",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Items fetched\", function () { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/items",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "items"
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Claims & Chats (End-to-End Flow)",
+      "item": [
+        {
+          "name": "Claims",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const baseUrl = pm.collectionVariables.get(\"base_url\");\r\nconst claimerEmail = pm.collectionVariables.get(\"claimer_email\");\r\nconst claimerPhone = pm.collectionVariables.get(\"claimer_phone\");\r\nconst pwd = pm.collectionVariables.get(\"test_password\");\r\n\r\n// 1. Request Claimer Auth OTP\r\npm.sendRequest({\r\n    url: baseUrl + \"/auth/request-otp\", method: 'POST', header: 'Content-Type:application/json',\r\n    body: { mode: 'raw', raw: JSON.stringify({ email: claimerEmail, phone: claimerPhone }) }\r\n}, function () {\r\n    // 2. Fetch Auth OTP\r\n    pm.sendRequest(baseUrl + \"/test/get-otp?email=\" + claimerEmail, function (err, res) {\r\n        // 3. Verify Auth OTP & Register\r\n        pm.sendRequest({\r\n            url: baseUrl + \"/auth/verify-otp\", method: 'POST', header: 'Content-Type:application/json',\r\n            body: { mode: 'raw', raw: JSON.stringify({ emailOrPhone: claimerEmail, code: res.json().otpCode, password: pwd, phone: claimerPhone }) }\r\n        }, function (err2, res2) {\r\n            let token = res2.json().token;\r\n            pm.collectionVariables.set(\"claimer_token\", token);\r\n            \r\n            // 4. Request Item Claim OTP\r\n            pm.sendRequest({ url: baseUrl + \"/items/request-otp\", method: 'POST', header: 'Authorization: Bearer ' + token }, function () {\r\n                // 5. Fetch Item Claim OTP\r\n                pm.sendRequest(baseUrl + \"/test/get-otp?email=\" + claimerEmail, function (err3, res3) {\r\n                    pm.collectionVariables.set(\"current_otp\", res3.json().otpCode);\r\n                    \r\n                    // CRITICAL FIX: Force Postman to attach the token instantly to the main request\r\n                    pm.request.headers.upsert({\r\n                        key: 'Authorization', \r\n                        value: 'Bearer ' + token\r\n                    });\r\n                });\r\n            });\r\n        });\r\n    });\r\n});"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Claim Submitted\", function () { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{claimer_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\r\n  \"itemId\": \"{{item_id}}\",\r\n  \"proofDescription\": \"I can prove this is mine.\",\r\n  \"contactEmailOrPhone\": \"{{claimer_email}}\",\r\n  \"latitude\": 27.7172,\r\n  \"longitude\": 85.3240,\r\n  \"otp\": \"{{current_otp}}\"\r\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/claims",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "claims"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Chats",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "var itemId = pm.collectionVariables.get(\"item_id\");\r\nvar targetChat = pm.response.json().find(c => c.reference.includes(itemId.substring(0,6).toUpperCase()));\r\npm.collectionVariables.set(\"chat_id\", targetChat.id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{poster_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/chats",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "chats"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Send Messages",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Message Sent\", function () { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{poster_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"text\": \"Is this yours?\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/chats/{{chat_id}}/messages",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "chats",
+                "{{chat_id}}",
+                "messages"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Generate Code",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.sendRequest({\r\n    url: pm.collectionVariables.get(\"base_url\") + \"/chats\",\r\n    method: 'GET',\r\n    header: 'Authorization: Bearer ' + pm.collectionVariables.get(\"poster_token\")\r\n}, function (err, res) {\r\n    var chat = res.json().find(c => c.id === pm.collectionVariables.get(\"chat_id\"));\r\n    pm.collectionVariables.set(\"resolution_otp\", chat.resolutionOtp);\r\n});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{poster_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/chats/{{chat_id}}/request-resolve-otp",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "chats",
+                "{{chat_id}}",
+                "request-resolve-otp"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Resolved",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Chat Resolved\", function () { pm.response.to.have.status(200); });\r\npm.collectionVariables.unset(\"run_initialized\"); // Resets the suite for the next run"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{claimer_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"otp\": \"{{resolution_otp}}\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/chats/{{chat_id}}/resolve",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "chats",
+                "{{chat_id}}",
+                "resolve"
+              ]
+            }
+          },
+          "response": []
+        }
+      ],
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"Status code is 200\", function () {\r\n    pm.response.to.have.status(200);\r\n});"
+            ]
+          }
+        }
+      ]
+    }
+  ],
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "exec": [
+          "// Generate fresh test data EVERY time you click Run\r",
+          "if(!pm.collectionVariables.get('run_initialized')) {\r",
+          "    var randomInt = Math.floor(Math.random() * 900000) + 100000; \r",
+          "\r",
+          "    pm.collectionVariables.set(\"poster_email\", \"poster_\" + randomInt + \"@automation.com\");\r",
+          "    pm.collectionVariables.set(\"poster_phone\", \"+977981\" + randomInt);\r",
+          "\r",
+          "    pm.collectionVariables.set(\"claimer_email\", \"claimer_\" + randomInt + \"@automation.com\");\r",
+          "    pm.collectionVariables.set(\"claimer_phone\", \"+977982\" + randomInt);\r",
+          "\r",
+          "    pm.collectionVariables.set(\"test_password\", \"Enterprise123!\");\r",
+          "    pm.collectionVariables.set(\"run_initialized\", true);\r",
+          "}"
+        ],
+        "type": "text/javascript"
+      }
+    }
+  ],
+  "variable": [
+    {
+      "key": "base_url",
+      "value": ""
+    },
+    {
+      "key": "test_email",
+      "value": ""
+    },
+    {
+      "key": "test_phone",
+      "value": ""
+    },
+    {
+      "key": "test_password",
+      "value": ""
+    },
+    {
+      "key": "claimer_email",
+      "value": ""
+    },
+    {
+      "key": "jwt_token",
+      "value": ""
+    },
+    {
+      "key": "current_otp",
+      "value": ""
+    },
+    {
+      "key": "item_id",
+      "value": ""
+    },
+    {
+      "key": "chat_id",
+      "value": ""
+    },
+    {
+      "key": "file_url",
+      "value": ""
+    },
+    {
+      "key": "poster_phone",
+      "value": ""
+    },
+    {
+      "key": "claimer_phone",
+      "value": ""
+    },
+    {
+      "key": "poster_token",
+      "value": ""
+    },
+    {
+      "key": "claimer_token",
+      "value": ""
+    },
+    {
+      "key": "poster_email",
+      "value": ""
+    },
+    {
+      "key": "resolution_otp",
+      "value": ""
+    }
+  ]
+}
