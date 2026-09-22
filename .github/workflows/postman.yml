@@ -10,16 +10,25 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: actions/setup-java@v4
+      # Updated to v5 to fix the deprecation warning
+      - uses: actions/setup-java@v5
         with:
           java-version: '23'
           distribution: 'temurin'
 
       - name: Start Spring Boot
         run: |
+          # Fix potential Windows line-ending issues
+          sed -i 's/\r$//' mvnw
           chmod +x mvnw
+          
+          # Start the server in the background
           ./mvnw spring-boot:run "-Dspring-boot.run.profiles=test" &
-          sleep 15
+          
+          # Dynamically wait for port 8081 to open (up to 3 minutes)
+          echo "Waiting for Spring Boot to start on port 8081..."
+          timeout 180 bash -c 'while ! nc -z localhost 8081; do sleep 3; done'
+          echo "Server is up! Running tests..."
 
       - name: Install Newman
         run: npm install -g newman
