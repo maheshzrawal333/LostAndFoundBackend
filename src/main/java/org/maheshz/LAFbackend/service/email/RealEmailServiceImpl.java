@@ -3,6 +3,7 @@ package org.maheshz.LAFbackend.service.email;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.annotation.Primary;
+import org.springframework.context.annotation.Profile;
 import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.scheduling.annotation.Async;
@@ -11,6 +12,7 @@ import org.springframework.stereotype.Service;
 @Slf4j
 @Service
 @Primary
+@Profile("!test")
 @RequiredArgsConstructor
 public class RealEmailServiceImpl implements EmailNotificationService {
 
